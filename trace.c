@@ -32,6 +32,29 @@ int handle_execve_tp(struct trace_sys_enter_execve *ctx) {
 }
 
 SEC("raw_tracepoint/sys_enter")
+int handle_execve_raw_tp_non_core(struct bpf_raw_tracepoint_args *ctx) {
+    // There is no method to attach a raw_tp or tp_btf directly to a single syscall... 
+    // this is because there are no static defined tracepoints on single syscalls but only on generic sys_enter/sys_exit
+    // So we have to filter by syscall ID
+    unsigned long id = ctx->args[1];
+    if (id != 59)   // execve sycall ID
+	return 0;
+
+    struct pt_regs *regs;
+    regs = (struct pt_regs *)ctx->args[0];
+
+    // Non CO-RE reads
+    const char *filename;
+    bpf_probe_read(&filename, sizeof(filename), &regs->di);
+
+    char buf[ARGSIZE];
+    bpf_probe_read_user_str(buf, sizeof(buf), filename);
+
+    bpf_printk("Raw tracepoint triggered for execve syscall with parameter filename: %s\n", buf);
+    return 0;
+}
+
+SEC("raw_tracepoint/sys_enter")
 int handle_execve_raw_tp(struct bpf_raw_tracepoint_args *ctx) {
     // There is no method to attach a raw_tp or tp_btf directly to a single syscall... 
     // this is because there are no static defined tracepoints on single syscalls but only on generic sys_enter/sys_exit
@@ -44,11 +67,9 @@ int handle_execve_raw_tp(struct bpf_raw_tracepoint_args *ctx) {
     struct pt_regs *regs;
     regs = (struct pt_regs *)ctx->args[0];
 
-    const char *pathname;
-    bpf_probe_read(&pathname, sizeof(pathname), &regs->di); // TODO: explain why regs->di
-
-    char buf[64];
-    bpf_probe_read_str(buf, sizeof(buf), pathname);
+    char *filename = (char *)PT_REGS_PARM1_CORE(regs);
+    char buf[ARGSIZE];
+    bpf_core_read_user_str(buf, sizeof(buf), filename);
 
     bpf_printk("Raw tracepoint triggered for execve syscall with parameter filename: %s\n", buf);
     return 0;
@@ -56,11 +77,10 @@ int handle_execve_raw_tp(struct bpf_raw_tracepoint_args *ctx) {
 
 SEC("kprobe/__x64_sys_execve")
 int kprobe_execve(struct pt_regs *ctx) {
-
     struct pt_regs *regs = (struct pt_regs *)PT_REGS_PARM1(ctx);
 
     char *filename = (char *)PT_REGS_PARM1_CORE(regs);
-    char buf[64];
+    char buf[ARGSIZE];
     bpf_core_read_user_str(buf, sizeof(buf), filename);
 
     // Print the flags value
@@ -79,11 +99,9 @@ int BPF_PROG(handle_execve_btf, struct pt_regs *regs, long id) {
     if (id != 59)  // execve syscall ID
         return 0; 
 
-    const char *pathname;
-    bpf_probe_read(&pathname, sizeof(pathname), &regs->di);
-
-    char buf[64];
-    bpf_probe_read_str(buf, sizeof(buf), pathname);
+    char *filename = (char *)PT_REGS_PARM1_CORE(regs);
+    char buf[ARGSIZE];
+    bpf_core_read_user_str(buf, sizeof(buf), filename);
 
     bpf_printk("BTF-enabled tracepoint triggered for execve syscall with parameter filename: %s\n", buf);
     return 0;
@@ -91,11 +109,9 @@ int BPF_PROG(handle_execve_btf, struct pt_regs *regs, long id) {
 
 SEC("fentry/__x64_sys_execve")
 int BPF_PROG(fentry_execve, const struct pt_regs *regs) {
-    const char *pathname;
-    bpf_probe_read(&pathname, sizeof(pathname), &regs->di);
-
-    char buf[64];
-    bpf_probe_read_str(buf, sizeof(buf), pathname);
+    char *filename = (char *)PT_REGS_PARM1_CORE(regs);
+    char buf[ARGSIZE];
+    bpf_core_read_user_str(buf, sizeof(buf), filename);
 
     bpf_printk("Fentry tracepoint triggered for execve syscall with parameter filename: %s\n", buf);
     return 0;
