@@ -40,6 +40,13 @@ func main() {
 	}
 	defer rawtp.Close()
 
+	// Attach kprobe 
+	kprobe, err := link.Kprobe("__x64_sys_execve", objs.KprobeExecve, nil)
+	if err != nil {
+		log.Fatalf("Attaching kProbe: %v", err)
+	}
+	defer kprobe.Close()
+
 	// Attach BTF-Enabled tracepoint
 	tpbtf, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.HandleExecveBtf,
@@ -48,13 +55,6 @@ func main() {
 		log.Fatalf("Attaching BTF-Enabled Tracepoint: %v", err)
 	}
 	defer tpbtf.Close()
-
-	// Attach kprobe 
-	kprobe, err := link.Kprobe("__x64_sys_execve", objs.KprobeExecve, nil)
-	if err != nil {
-		log.Fatalf("Attaching kProbe: %v", err)
-	}
-	defer kprobe.Close()
 
 	// Attach fentry 
 	fentry, err := link.AttachTracing(link.TracingOptions{
