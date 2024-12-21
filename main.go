@@ -33,7 +33,7 @@ func main() {
 	// Attach Raw Tracepoint
 	rawtp, err := link.AttachRawTracepoint(link.RawTracepointOptions{
 		Name: "sys_enter", 
-		Program: objs.HandleExecveRawTp,
+		Program: objs.HandleExecveRawTpNonCore,
 	})
 	if err != nil {
 		log.Fatalf("Attaching raw Tracepoint: %s", err)
@@ -41,7 +41,7 @@ func main() {
 	defer rawtp.Close()
 
 	// Attach kprobe 
-	kprobe, err := link.Kprobe("__x64_sys_execve", objs.KprobeExecve, nil)
+	kprobe, err := link.Kprobe("__x64_sys_execve", objs.KprobeExecveNonCore, nil)
 	if err != nil {
 		log.Fatalf("Attaching kProbe: %v", err)
 	}
