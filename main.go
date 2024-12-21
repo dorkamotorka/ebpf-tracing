@@ -1,6 +1,6 @@
 package main
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go trace trace.c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 trace trace.c
 
 import (
 	"log"

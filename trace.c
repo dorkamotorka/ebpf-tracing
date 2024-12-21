@@ -6,15 +6,28 @@
 
 char _license[] SEC("license") = "GPL";
 
-SEC("tracepoint/syscalls/sys_enter_execve")
-int handle_execve_tp(struct trace_event_raw_sys_enter *ctx) {
-    // Irrelevant operation but here to showcase the CO-RE operation
-    unsigned long int id = 0;
-    BPF_CORE_READ_INTO(&id, ctx, id);
-    if (id != 59)   // execve sycall ID
-	return 0;
+#define ARGSIZE 256 
 
-    bpf_printk("Tracepoint triggered for execve syscall\n");
+struct trace_sys_enter_execve {
+    short common_type;
+    char common_flags;
+    char common_preempt_count;
+    int common_pid;
+
+    s32 syscall_nr;        // offset=8,  size=4
+    u32 pad;               // offset=12, size=4 (pad)
+    const u8 *filename;    // offset=16, size=8
+    const u8 *const *argv; // offset=24, size=8
+    const u8 *const *envp; // offset=32, size=8
+};
+
+SEC("tracepoint/syscalls/sys_enter_execve")
+int handle_execve_tp(struct trace_sys_enter_execve *ctx) {
+    u8 filename[ARGSIZE];
+
+    bpf_probe_read_user_str(&filename, sizeof(filename), ctx->filename);
+
+    bpf_printk("Tracepoint triggered for execve syscall with parameter filename: %s\n", filename);
     return 0;
 }
 
@@ -28,19 +41,30 @@ int handle_execve_raw_tp(struct bpf_raw_tracepoint_args *ctx) {
     if (id != 59)   // execve sycall ID
 	return 0;
 
-    bpf_printk("Raw tracepoint triggered for execve syscall\n");
+    struct pt_regs *regs;
+    regs = (struct pt_regs *)ctx->args[0];
+
+    const char *pathname;
+    bpf_probe_read(&pathname, sizeof(pathname), &regs->di); // TODO: explain why regs->di
+
+    char buf[64];
+    bpf_probe_read_str(buf, sizeof(buf), pathname);
+
+    bpf_printk("Raw tracepoint triggered for execve syscall with parameter filename: %s\n", buf);
     return 0;
 }
 
 SEC("kprobe/__x64_sys_execve")
 int kprobe_execve(struct pt_regs *ctx) {
-    unsigned long flags = 0;
 
-    // Directly read the some parameter from pt_regs using CO-RE
-    BPF_CORE_READ_INTO(&flags, ctx, dx);
+    struct pt_regs *regs = (struct pt_regs *)PT_REGS_PARM1(ctx);
+
+    char *filename = (char *)PT_REGS_PARM1_CORE(regs);
+    char buf[64];
+    bpf_core_read_user_str(buf, sizeof(buf), filename);
 
     // Print the flags value
-    bpf_printk("Kprobe triggered for execve syscall. Flags: %lu\n", flags);
+    bpf_printk("Kprobe triggered for execve syscall with parameter filename: %s\n", buf);
 
     return 0;
 }
@@ -55,12 +79,24 @@ int BPF_PROG(handle_execve_btf, struct pt_regs *regs, long id) {
     if (id != 59)  // execve syscall ID
         return 0; 
 
-    bpf_printk("BTF-enabled tracepoint triggered for execve syscall\n");
+    const char *pathname;
+    bpf_probe_read(&pathname, sizeof(pathname), &regs->di);
+
+    char buf[64];
+    bpf_probe_read_str(buf, sizeof(buf), pathname);
+
+    bpf_printk("BTF-enabled tracepoint triggered for execve syscall with parameter filename: %s\n", buf);
     return 0;
 }
 
 SEC("fentry/__x64_sys_execve")
 int BPF_PROG(fentry_execve, const struct pt_regs *regs) {
-    bpf_printk("Fentry triggered for execve syscall\n");
+    const char *pathname;
+    bpf_probe_read(&pathname, sizeof(pathname), &regs->di);
+
+    char buf[64];
+    bpf_probe_read_str(buf, sizeof(buf), pathname);
+
+    bpf_printk("Fentry tracepoint triggered for execve syscall with parameter filename: %s\n", buf);
     return 0;
 }
