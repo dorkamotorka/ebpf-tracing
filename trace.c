@@ -8,24 +8,11 @@ char _license[] SEC("license") = "GPL";
 
 #define ARGSIZE 256 
 
-struct trace_sys_enter_execve {
-    short common_type;
-    char common_flags;
-    char common_preempt_count;
-    int common_pid;
-
-    s32 syscall_nr;        // offset=8,  size=4
-    u32 pad;               // offset=12, size=4 (pad)
-    const u8 *filename;    // offset=16, size=8
-    const u8 *const *argv; // offset=24, size=8
-    const u8 *const *envp; // offset=32, size=8
-};
-
 SEC("tracepoint/syscalls/sys_enter_execve")
-int handle_execve_tp(struct trace_sys_enter_execve *ctx) {
+int handle_execve_tp(struct trace_event_raw_sys_enter *ctx) {
+    char *filename_ptr = (char *)BPF_CORE_READ(ctx, args[0]);
     u8 filename[ARGSIZE];
-
-    bpf_probe_read_user_str(&filename, sizeof(filename), ctx->filename);
+    bpf_core_read_user_str(&filename, sizeof(filename), filename_ptr);
 
     bpf_printk("Tracepoint triggered for execve syscall with parameter filename: %s\n", filename);
     return 0;
