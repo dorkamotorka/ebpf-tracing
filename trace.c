@@ -141,7 +141,10 @@ int handle_execve_btf(u64 *ctx) {
 }
 
 SEC("fentry/__x64_sys_execve")
-int BPF_PROG(fentry_execve, const struct pt_regs *regs) {
+int fentry_execve(u64 *ctx) {
+    // Direct kernel memory access
+    struct pt_regs *regs = (struct pt_regs *)ctx[0];
+
     char *filename = (char *)PT_REGS_PARM1_CORE(regs);
     char buf[ARGSIZE];
     bpf_core_read_user_str(buf, sizeof(buf), filename);
