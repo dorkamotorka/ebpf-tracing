@@ -90,10 +90,10 @@ int kprobe_execve_non_core(struct pt_regs *ctx) {
     //char *filename = (char *)PT_REGS_PARM1(ctx);
 
     struct pt_regs *ctx2 = (struct pt_regs *)PT_REGS_PARM1(ctx);
-    char *filename = (char *)PT_REGS_PARM1_CORE(ctx2);
+    char *filename = (char *)PT_REGS_PARM1(ctx2);
 
     char buf[ARGSIZE];
-    bpf_core_read_user_str(buf, sizeof(buf), filename);
+    bpf_probe_read_user_str(buf, sizeof(buf), filename);
 
     // Print the flags value
     bpf_printk("Kprobe triggered for execve syscall with parameter filename: %s\n", buf);
