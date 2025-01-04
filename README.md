@@ -8,7 +8,7 @@ But their overlapping functionality can make choosing the right one confusing.
 
 This demo repository showcases different ways to implement tracing in the eBPF program. It also provides a CO-RE program version for each type. 
 
-Namely, it covers:
+Namely, it covers examples of:
 
 - Regular eBPF Tracepoint
 - Raw eBPF Tracepoint
@@ -18,7 +18,7 @@ Namely, it covers:
 
 ## Build & Run
 
-You need run the program using:
+To run the program yourself, use:
 
 ```
 go generate
@@ -26,4 +26,4 @@ go build
 sudo ./trace
 ```
 
-**NOTE:** By default non CO-RE programs are attached and ran, but you can change this behaviour by uncommenting the corresponding function in the `trace.c` and attaching it in the `main.go` file.
+**NOTE:** By default non CO-RE programs are attached and ran, but you can change this behaviour by uncommenting the corresponding function in the `trace.c` and attaching them by their name in the `main.go` file.
