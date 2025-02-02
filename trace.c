@@ -91,11 +91,11 @@ int handle_execve_raw_tp(struct bpf_raw_tracepoint_args *ctx) {
 /*
 SEC("kprobe/__x64_sys_execve")
 int kprobe_execve_non_core(struct pt_regs *ctx) {
-    // For Kernel version 4.17.0
-    //char *filename = (char *)PT_REGS_PARM1(ctx);
+    char *filename = (char *)PT_REGS_PARM1(ctx);
 
-    struct pt_regs *ctx2 = (struct pt_regs *)PT_REGS_PARM1(ctx);
-    char *filename = (char *)PT_REGS_PARM1(ctx2);
+    // This is not portable, so you might have to actually replace the first line with this
+    //struct pt_regs *ctx2 = (struct pt_regs *)PT_REGS_PARM1(ctx);
+    //char *filename = (char *)PT_REGS_PARM1(ctx2);
 
     char buf[ARGSIZE];
     bpf_probe_read_user_str(buf, sizeof(buf), filename);
